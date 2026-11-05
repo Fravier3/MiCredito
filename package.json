@@ -1,0 +1,15 @@
+{
+  "name": "micredito",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build && node scripts/offline.mjs",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "8.3.6"
+  }
+}

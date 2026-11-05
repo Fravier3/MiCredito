@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {calculate,purchaseCycle,addDays,daysBetween} from '../src/features/calculator.ts';
+test('reference scenario: 2000 on 6000, payment 1700 = 5%',()=>{const r=calculate(600000,200000,170000);assert.equal(r.remaining,30000);assert.equal(r.after,5);assert.equal(r.needed,146000)});
+test('new spending after paying all does not reset cycle',()=>{const r=calculate(100000,40000,40000,10000);assert.equal(r.remaining,0);assert.equal(r.projected,10000);assert.equal(purchaseCycle('2026-11-06','2026-11-10'),'current');assert.equal(purchaseCycle('2026-11-11','2026-11-10'),'next');assert.equal(purchaseCycle('2026-11-10','2026-11-10'),'boundary')});
+test('cent precision, overpayment, overlimit and invalid inputs',()=>{assert.equal(calculate(10000,3001,0,0,29).needed,101);assert.equal(calculate(10000,4000,5000).remaining,0);assert.equal(calculate(10000,4000,5000).excess,1000);assert.equal(calculate(10000,12000,0).current,120);assert.throws(()=>calculate(0,1,0));assert.throws(()=>calculate(1,-1,0));assert.throws(()=>calculate(100,1,NaN))});
+test('dates cross year, leap month and daylight time',()=>{assert.equal(addDays('2026-12-31',1),'2027-01-01');assert.equal(addDays('2028-02-28',1),'2028-02-29');assert.equal(daysBetween('2026-03-07','2026-03-09'),2)});
