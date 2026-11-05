@@ -1,41 +1,64 @@
 import {appShell} from './features/app-shell.js';
 import './styles/app.css';
-import {cents,money,percent,calculate,status,dateKey,addDays,daysBetween,dateLabel,purchaseCycle} from './features/calculator.ts';
+import {cents,money,percent,calculate,dateKey,addDays,daysBetween,dateLabel,purchaseCycle,status} from './features/calculator.ts';
 import {load,save,clear} from './services/session.js';
-const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Puerto_Rico',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-const fields=['limit','balance','cutoff','due','payment','purchase','posted','target','statement','minimum'];
 document.querySelector('#app').innerHTML=appShell;
-const el=id=>document.getElementById(id);let result;
-const stored=load();for(const f of fields)if(stored?.[f]!==undefined)el(f).value=stored[f];
-if(!el('posted').value)el('posted').value=addDays(today(),1);
-el('today-label').textContent=dateLabel(today());
-function update(){
-const data=Object.fromEntries(fields.map(f=>[f,el(f).value]));save(data);el('error').textContent='';
+const el=id=>document.getElementById(id);
 const text=(id,value)=>el(id).textContent=value;
-function resetResults(){for(const id of ['current-money','available','after-money','goal-money','projection-money'])text(id,'—');el('utilization').innerHTML='—<span>%</span>';el('after-percent').innerHTML='—<small>%</small>';el('meter-fill').style.width='0';el('status').className='badge neutral';text('status','Revisa tus datos');text('ratio','Completa el límite y el saldo con importes válidos.');text('goal-note','Verás cuánto pagar para alcanzar tu meta.');text('pay-note','El pago baja tu saldo; no reinicia tu ciclo.');text('cycle-answer','Completa tus datos para ubicar la compra.');text('projection-percent','');text('cut-label','—');text('due-note','Indica la próxima fecha de vencimiento del estado ya emitido.');text('due-action','Consulta el saldo pendiente del estado en tu banco.');}
-const invalid=fields.filter(f=>el(f).type==='number').some(f=>el(f).value!==''&&!el(f).validity.valid);
-if(invalid){result=null;resetResults();text('error','Usa importes de cero o más, con hasta dos decimales. El límite debe ser mayor que cero.');return;}
-const valid=el('limit').value!==''&&el('balance').value!=='';
-if(!valid){result=null;resetResults();for(const id of ['current-money','available','after-money','goal-money','projection-money'])text(id,'—');el('utilization').innerHTML='—<span>%</span>';el('after-percent').innerHTML='—<small>%</small>';el('meter-fill').style.width='0';el('status').className='badge neutral';text('status','Añade tus datos');text('ratio','¿Qué parte de tu límite estás usando?');el('initial').hidden=false;return;}
-try{result=calculate(cents(data.limit),cents(data.balance),cents(data.payment||0),cents(data.purchase||0),Number(data.target))}catch(e){result=null;resetResults();text('error',e.message);return}
-const r=result, s=status(r.current);el('initial').hidden=true;el('utilization').innerHTML=`${percent(r.current)}<span>%</span>`;el('status').className=`badge ${s.tone}`;text('status',s.label);text('ratio',`${money(cents(data.balance))} de un límite de ${money(cents(data.limit))}`);el('meter-fill').style.width=`${Math.min(100,r.current)}%`;el('meter-fill').className=s.tone;text('current-money',money(cents(data.balance)));text('available',money(r.available));el('after-percent').innerHTML=`${percent(r.after)}<small>%</small>`;text('after-money',`Saldo restante: ${money(r.remaining)}`);text('pay-note',r.excess>0?`Solo simulamos ${money(r.applied)} para saldar. Hay ${money(r.excess)} adicionales que no necesitas para llegar a cero.`:'Cuando el banco aplique el pago. Compras nuevas pueden aumentar el saldo otra vez.');text('goal-money',r.after<=Number(data.target)?(r.applied?'Con ese pago cumples':'Ya estás en tu meta'):`Paga ${money(r.needed)} en total`);text('goal-note',`Desde tu saldo actual, la meta requiere un pago total de ${money(r.needed)}. Para quedar en ${percent(Number(data.target))}%: ${money(r.targetBalance)} de saldo como máximo, sin nuevos cargos. ${data.cutoff?'Procura que el pago se aplique antes del '+dateLabel(data.cutoff)+'.':'Añade el próximo corte para planificarlo.'}`);
-if(cents(data.balance)>cents(data.limit))text('error','Tu saldo supera el límite. La utilización puede ser mayor del 100%. Revisa el importe y consulta a tu banco.');
-const cut=data.cutoff, posted=data.posted;
-if(cut){text('cut-label',dateLabel(cut));const age=daysBetween(today(),cut);if(age<0){text('cycle-answer','Ese corte ya pasó. Actualiza el próximo corte para simular un ciclo futuro.');text('projection-money','—');text('projection-percent','');}else if(posted){const cycle=purchaseCycle(posted,cut);let message=cycle==='current'?`Si el cargo se registra el ${dateLabel(posted)}, entra en el ciclo abierto que cierra el ${dateLabel(cut)}. Aunque saldes hoy, esa compra vuelve a sumar a este ciclo.`:cycle==='next'?`Si el cargo se registra el ${dateLabel(posted)}, después del corte del ${dateLabel(cut)}, queda para un estado posterior. No pertenece al que cierra en ese corte.`:`La compra se registraría el mismo día del corte. Puede entrar en este estado o en el siguiente: depende de la hora y del procesamiento del banco.`;if(posted<today())message='Elegiste una fecha pasada. Esta simulación parte del saldo actual; elige hoy o una fecha futura para no contar dos veces un cargo.';text('cycle-answer',message);const p=cycle==='current'?r.projected:r.remaining;text('projection-money',cycle==='boundary'?`${money(r.remaining)} – ${money(r.projected)}`:money(p));text('projection-percent',cycle==='boundary'?`${percent(r.after)}% – ${percent(r.projectedPercent)}%`:`${percent(p/cents(data.limit)*100)}% de utilización`);text('projection-label',age===0?'Corte hoy: confirma si el pago alcanza a aplicarse':'Saldo al próximo corte, estimado');}else{text('cycle-answer','Añade la fecha estimada de registro de la compra.');text('projection-money','—');text('projection-percent','');}}else{text('cycle-answer','Añade el próximo corte para ubicar la compra.');text('cut-label','—');text('projection-money','—');text('projection-percent','');}
-if(data.due){const days=daysBetween(today(),data.due);text('due-note',days<0?`La fecha ${dateLabel(data.due)} ya pasó. Verifica si quedó algún importe vencido y actualiza la fecha.`:days===0?'Tu estado vence hoy. Confirma la hora límite de tu banco.':`Tu estado vence el ${dateLabel(data.due)}: faltan ${days} días.`);}else text('due-note','Indica el próximo vencimiento del estado ya emitido.');
-let dueText='Para decirte cuánto vence, añade el pendiente del estado en la sección opcional. No se deduce del saldo actual.';
-if(data.statement!==''){const pending=cents(data.statement);dueText=pending===0?'Indicaste que no queda saldo pendiente del estado. Las compras nuevas siguen su propio ciclo.':`Antes de simular tu pago, quedan ${money(pending)} del estado. Confirma lo restante en tu banco después de pagar; esta simulación no modifica ese importe.`;if(pending>cents(data.balance))dueText+=' Revisa los importes: el pendiente del estado supera tu saldo actual.';}
-if(data.minimum!=='')dueText+=` Mínimo pendiente informado: ${money(cents(data.minimum))}. Cubrir solo el mínimo puede generar intereses.`;
-if((data.statement!==''&&Number(data.statement)<0)||(data.minimum!==''&&Number(data.minimum)<0)){text('error','Los importes pendientes no pueden ser negativos.');dueText='Revisa los importes opcionales.';}
-text('due-action',dueText);
+const today=()=>dateKey(new Date());
+const fields=['limit','balance','cutoff','due'];
+let target=30;
+const stored=load();
+for(const f of fields)if(typeof stored?.[f]==='string')el(f).value=stored[f];
+if([30,9,0].includes(Number(stored?.target)))target=Number(stored.target);
+function update(){
+ const data=Object.fromEntries(fields.map(f=>[f,el(f).value]));save({...data,target});
+ for(const b of document.querySelectorAll('[data-target]'))b.setAttribute('aria-pressed',String(Number(b.dataset.target)===target));
+ text('error','');
+ const goalLabel=target===0?'Saldar todo':target===9?'Quedar por debajo de 10%':'Quedar en 30%';
+ text('payment-label',target===0?'Para saldar tu tarjeta':`Paga para ${goalLabel.toLowerCase()}`);
+ const numbers=['limit','balance'];
+ const invalid=numbers.some(f=>el(f).value!==''&&!el(f).validity.valid);
+ let r;
+ if(!invalid&&numbers.every(f=>data[f]!=='')){
+  try{r=calculate(cents(data.limit),cents(data.balance),0,0,target)}catch(e){text('error',e.message)}
+ }
+ if(invalid)text('error','Revisa los importes. El límite debe ser mayor que cero; usa hasta dos decimales y saldos de cero o más.');
+ if(r){
+  const s=status(r.current);el('utilization').innerHTML=`${percent(r.current)}<span>%</span>`;
+  text('ratio',`${money(cents(data.balance))} de ${money(cents(data.limit))}`);
+  text('status',r.current===30?'En la referencia de 30%':s.label);el('status').className=`badge ${s.tone}`;
+  el('meter-fill').style.width=`${Math.min(r.current,100)}%`;el('meter-fill').className=s.tone;
+  text('thirty-money',money(Math.floor(cents(data.limit)*.3)));
+  text('goal-money',money(r.needed));
+  const remaining=cents(data.balance)-r.needed;
+  text('remaining',money(remaining));text('after-percent',`${percent(remaining/cents(data.limit)*100)}%`);
+  text('goal-note',r.needed===0?(target===0?'Ya tienes la tarjeta saldada.':'Ya cumples esta meta. No necesitas un pago adicional para alcanzarla.'):(target===0?'Este pago cubre todo lo que debes ahora.':`Este es el pago necesario desde tu saldo actual. ${target===9?'Usamos 9% como meta para quedar por debajo de 10%.':'Para quedar por debajo de 30%, paga un poco más o elige menos de 10%.'}`));
+  if(r.current>100)text('error','El saldo supera tu límite. Revisa los datos; el cálculo incluye lo que excede el límite.');
+ }else{
+  el('utilization').innerHTML='—<span>%</span>';text('status','Añade tus datos');el('status').className='badge neutral';el('meter-fill').style.width='0';
+  for(const id of ['thirty-money','goal-money','remaining','after-percent'])text(id,'—');
+  text('ratio','De tu límite de crédito.');text('goal-note','Añade tu límite y lo que debes.');
+ }
+ const cut=data.cutoff;
+ if(cut&&el('cutoff').validity.valid){
+  const days=daysBetween(today(),cut);
+  text('when-title',days<0?'Ese corte ya pasó':days===0?'Tu corte es hoy':`Aplicado antes del ${dateLabel(cut)}`);
+  text('when-note',days<0?'Actualiza la próxima fecha de corte. Un pago hoy no cambia un estado ya cerrado.':days===0?'Confirma con tu banco si un pago hoy alcanzaría a registrarse antes del cierre. No podemos garantizarlo.':`Faltan ${days} días. Haz el pago con la anticipación que requiera tu banco; no esperes al último día. Si compras antes del corte, revisa el importe otra vez.`);
+  const cycle=purchaseCycle(addDays(today(),1),cut);
+  text('cycle-answer',days<0?'Ese corte ya pasó. Actualízalo para ubicar una compra futura.':cycle==='current'?`Si mañana (${dateLabel(addDays(today(),1))}) se registra una compra, cuenta en el ciclo que cierra el ${dateLabel(cut)}, aunque hayas saldado hoy. Esa compra aumenta el saldo de este corte; su pago vence después de emitirse ese estado.`:cycle==='boundary'?'Mañana es tu fecha de corte. Una compra registrada ese día puede entrar en este estado o en el siguiente, según el procesamiento del banco.':`Una compra registrada mañana, después del corte del ${dateLabel(cut)}, entra en el siguiente ciclo. Pagar hoy no cambia esa fecha.`);
+ }else{text('when-title','¿Cuándo hacer el pago?');text('when-note','Añade tu próximo corte para ver cuándo debe estar aplicado.');text('cycle-answer','Añade la fecha de corte para ubicar una compra registrada mañana.');}
+ el('when-title').parentElement.parentElement.classList.toggle('urgent',!!cut&&daysBetween(today(),cut)<=0);
+ const due=data.due;
+ if(due&&el('due').validity.valid){const d=daysBetween(today(),due);text('due-title',d<0?`El vencimiento del ${dateLabel(due)} ya pasó`:d===0?'Tu fecha de pago es hoy':`Paga tu estado antes del ${dateLabel(due)}`);text('due-note',d<0?'Revisa hoy con tu banco si queda saldo vencido y actualiza la fecha.':`${d===0?'Confirma la hora límite de tu banco. ':''}Paga el saldo completo pendiente del estado de cuenta para evitar intereses en compras, si conservas el período de gracia. ${d>0?`Faltan ${d} días.`:''}`)}else{text('due-title','Añade el próximo vencimiento');text('due-note','Paga el saldo completo pendiente del estado de cuenta antes del vencimiento para evitar intereses en compras, si conservas el período de gracia.');}
 }
 for(const f of fields)el(f).addEventListener('input',update);
-el('form').addEventListener('submit',e=>e.preventDefault());
-el('example').onclick=()=>{el('limit').value=6000;el('balance').value=2000;el('payment').value=1700;el('purchase').value=100;el('cutoff').value=addDays(today(),5);el('due').value=addDays(today(),2);el('posted').value=addDays(today(),1);el('statement').value='';el('minimum').value='';el('target').value=9;update()};
-for(const b of document.querySelectorAll('[data-pay]'))b.onclick=()=>{if(!result)return;el('payment').value=(b.dataset.pay==='all'?cents(el('balance').value):result.needed)/100;update()};
-el('reset').onclick=()=>{for(const f of fields)el(f).value=f==='target'?'9':'';el('posted').value=addDays(today(),1);clear();location.reload()};
+for(const b of document.querySelectorAll('[data-target]'))b.onclick=()=>{target=Number(b.dataset.target);update()};
+el('form').onsubmit=e=>e.preventDefault();
+el('example').onclick=()=>{el('limit').value='6000';el('balance').value='2000';el('cutoff').value=addDays(today(),5);el('due').value=addDays(today(),2);target=30;update()};
+el('reset').onclick=()=>{for(const f of fields)el(f).value='';target=30;clear();update()};
 update();
-// Network-first navigation and user-triggered activation keep the active calculation intact.
-let registration;
-if(import.meta.env.PROD && 'serviceWorker' in navigator){navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).then(r=>{registration=r;if(r.waiting){navigator.serviceWorker.addEventListener('controllerchange',()=>location.reload(),{once:true});r.waiting.postMessage('SKIP_WAITING');}r.update().catch(()=>{})}).catch(()=>{});for(const event of ['online','focus'])window.addEventListener(event,()=>registration?.update().catch(()=>{}));}
-el('update').onclick=async()=>{const out=el('update-status');if(!navigator.onLine){out.textContent='Sin conexión. Puedes seguir calculando.';return}try{await registration?.update();if(registration?.waiting){registration.waiting.postMessage('SKIP_WAITING');navigator.serviceWorker.addEventListener('controllerchange',()=>location.reload(),{once:true});}else out.textContent='Comprobado. No hay una actualización pendiente.'}catch{out.textContent='No se pudo comprobar. Intenta nuevamente.'}};
+let registration, reloading=false;
+const activate=()=>{if(registration?.waiting){navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloading){reloading=true;location.reload()}},{once:true});registration.waiting.postMessage('SKIP_WAITING')}};
+if(import.meta.env.PROD&&'serviceWorker' in navigator){navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).then(r=>{registration=r;activate();r.addEventListener('updatefound',()=>{const worker=r.installing;worker?.addEventListener('statechange',()=>{if(worker.state==='installed'&&navigator.serviceWorker.controller)activate()})});r.update().catch(()=>{})}).catch(()=>{});for(const event of ['online','focus'])window.addEventListener(event,()=>registration?.update().catch(()=>{}));}
+el('update').onclick=async()=>{try{if(!navigator.onLine){text('update-status','Sin conexión. Puedes seguir calculando.');return}await registration?.update();activate();text('update-status','Comprobación completada.')}catch{text('update-status','No se pudo comprobar. Intenta de nuevo.')}};

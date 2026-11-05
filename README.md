@@ -6,7 +6,7 @@ Calculadora educativa para tarjetas de EE. UU. y Puerto Rico. Vite, TypeScript e
 
 Node 24: `npm ci`, `npm test`, `npm run build`, `npm run dev`.
 
-Los importes se calculan en centavos enteros. La compra se clasifica por registro respecto al próximo corte; el día del corte es ambiguo. El saldo pendiente del estado es una entrada opcional independiente: no se infiere del saldo actual ni se modifica con pagos simulados.
+Los importes se calculan en centavos enteros. La compra se clasifica por registro respecto al próximo corte; el día del corte es ambiguo. La pantalla pide cuatro datos: límite, saldo actual, próximo corte y próximo vencimiento. Muestra el importe del 30% del límite y el pago para alcanzar 30%, 9% o cero. El pendiente del estado anterior no se infiere del saldo actual; se explica que debe confirmarse con el banco. La simulación de compras queda como explicación desplegable.
 
 ## Arquitectura
 
