@@ -1,3 +1,4 @@
+import {formatAmount,rawAmount} from './money-input.js';
 import {loadCards,saveCards,newCard,loadBalances,saveBalances,clearCards} from '../services/cards.js';
 export function cardPicker(onChange){
  const el=id=>document.getElementById(id);
@@ -5,7 +6,7 @@ export function cardPicker(onChange){
  const current=()=>state.cards.find(c=>c.id===state.selected);
  const fields=['limit','cutoff','due'];
  function status(ok){
-  el('storage-status').textContent=ok?'Guardado en este dispositivo. Las fechas se conservan tal como las ingreses; revísalas cada ciclo.':'El navegador no permite guardar. Puedes calcular, pero tus cambios podrían perderse al cerrar.';
+  el('storage-status').textContent=ok?'Guardado en este dispositivo. El corte y el pago se repiten cada mes; confirma los días con tu banco.':'El navegador no permite guardar. Puedes calcular, pero tus cambios podrían perderse al cerrar.';
  }
  function persist(){status(saveCards(state))}
  function render(){
@@ -19,17 +20,17 @@ export function cardPicker(onChange){
   }
  }
  function fill(){
-  for(const f of fields)el(f).value=current()[f];
+  for(const f of fields)el(f).value=f==='limit'?(formatAmount(current()[f])??''):current()[f];
   el('card-name').value=current().name;
-  el('balance').value=typeof balances[state.selected]==='string'?balances[state.selected]:'';
+  el('balance').value=typeof balances[state.selected]==='string'?(formatAmount(balances[state.selected])??''):'';
   el('example-back').hidden=!example;
   el('card-name').disabled=example;
   render();
  }
  function capture(){
   if(example){el('storage-status').textContent='Ejemplo de práctica. Tus tarjetas guardadas no se modifican.';onChange();return}
-  for(const f of fields)current()[f]=el(f).value;
-  balances[state.selected]=el('balance').value;saveBalances(balances);persist();onChange();
+  for(const f of fields)current()[f]=f==='limit'?rawAmount(el(f).value):el(f).value;
+  balances[state.selected]=rawAmount(el('balance').value);saveBalances(balances);persist();onChange();
  }
  for(const f of [...fields,'balance'])el(f).addEventListener('input',capture);
  el('card-name').addEventListener('input',()=>{current().name=el('card-name').value.slice(0,40);render();persist()});

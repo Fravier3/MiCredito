@@ -14,3 +14,17 @@ export const daysBetween=(a: string,b: string)=>Math.round((parseDate(b).getTime
 export const dateLabel=(s: string)=>parseDate(s).toLocaleDateString('es-PR',{day:'numeric',month:'short',year:'numeric'});
 export function purchaseCycle(posted: string,cutoff: string){return posted<cutoff?'current':posted===cutoff?'boundary':'next'}
 export function status(p: number){return p===0?{tone:'good',label:'Sin saldo'}:p<10?{tone:'good',label:'Utilización baja'}:p<30?{tone:'watch',label:'Puedes reducirla'}:{tone:'high',label:p>100?'Sobre el límite':'Utilización elevada'}};
+
+// Resolve a recurring day independently of the age/year of the saved profile.
+export function nextMonthlyDate(day: string | number, from = dateKey(new Date())) {
+ const n=Number(day);
+ if(!Number.isInteger(n)||n<1||n>31)return '';
+ const base=parseDate(from);
+ const candidate=(offset: number)=>{
+  const first=new Date(base.getFullYear(),base.getMonth()+offset,1,12);
+  const last=new Date(first.getFullYear(),first.getMonth()+1,0,12).getDate();
+  return dateKey(new Date(first.getFullYear(),first.getMonth(),Math.min(n,last),12));
+ };
+ const current=candidate(0);
+ return current>=from?current:candidate(1);
+}

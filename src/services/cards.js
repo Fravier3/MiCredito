@@ -5,16 +5,17 @@ const read=(storage,key)=>{try{return JSON.parse(storage().getItem(key)||'null')
 const local=()=>globalThis.localStorage;
 const session=()=>globalThis.sessionStorage;
 export const newCard=(name='Mi tarjeta')=>({id:crypto.randomUUID(),name,limit:'',cutoff:'',due:''});
+export const monthlyDay=value=>{const s=String(value??'');const n=Number(/^\d{4}-\d{2}-\d{2}$/.test(s)?s.slice(-2):s);return Number.isInteger(n)&&n>=1&&n<=31?String(n):''};
 const str=(value,max=40)=>typeof value==='string'?value.slice(0,max):'';
 export function loadCards(){
  const saved=read(local,KEY);
  if(saved?.version===1&&Array.isArray(saved.cards)){
   const ids=new Set();
-  const cards=saved.cards.filter(c=>c&&typeof c.id==='string'&&c.id&&!ids.has(c.id)&&ids.add(c.id)).map(c=>({id:c.id,name:str(c.name)||'Mi tarjeta',limit:str(c.limit),cutoff:str(c.cutoff,10),due:str(c.due,10)}));
+  const cards=saved.cards.filter(c=>c&&typeof c.id==='string'&&c.id&&!ids.has(c.id)&&ids.add(c.id)).map(c=>({id:c.id,name:str(c.name)||'Mi tarjeta',limit:str(c.limit),cutoff:monthlyDay(c.cutoff),due:monthlyDay(c.due)}));
   if(cards.length)return {cards,selected:cards.some(c=>c.id===saved.selected)?saved.selected:cards[0].id};
  }
  const old=read(session,LEGACY);
- const card={...newCard(),limit:str(old?.limit),cutoff:str(old?.cutoff,10),due:str(old?.due,10)};
+ const card={...newCard(),limit:str(old?.limit),cutoff:monthlyDay(old?.cutoff),due:monthlyDay(old?.due)};
  return {cards:[card],selected:card.id};
 }
 export function saveCards(state){
