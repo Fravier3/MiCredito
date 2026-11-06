@@ -1,6 +1,7 @@
 import {appShell} from './features/app-shell.js';
 import './styles/app.css';
 import {cents,money,percent,calculate,dateKey,addDays,daysBetween,dateLabel,purchaseCycle,status} from './features/calculator.ts';
+import {renderDashboard} from './features/dashboard.js';
 import {cardPicker} from './components/card-picker.js';
 document.querySelector('#app').innerHTML=appShell;
 const el=id=>document.getElementById(id);
@@ -10,6 +11,7 @@ const fields=['limit','balance','cutoff','due'];
 let target=30;
 const cards=cardPicker(update);
 function update(){
+ renderDashboard(el('dashboard-cards'),cards.getCards());
  const data=Object.fromEntries(fields.map(f=>[f,el(f).value]));
  for(const b of document.querySelectorAll('[data-target]'))b.setAttribute('aria-pressed',String(Number(b.dataset.target)===target));
  text('error','');
@@ -53,6 +55,17 @@ function update(){
 for(const b of document.querySelectorAll('[data-target]'))b.onclick=()=>{target=Number(b.dataset.target);update()};
 el('form').onsubmit=e=>e.preventDefault();
 el('example').onclick=()=>{cards.example();el('limit').value='6000';el('balance').value='2000';el('cutoff').value=addDays(today(),5);el('due').value=addDays(today(),2);target=30;update()};
+function showView(dashboard){
+ el('calculator-view').hidden=dashboard;el('dashboard-view').hidden=!dashboard;
+ for(const [id,active] of [['calculator-tab',!dashboard],['dashboard-tab',dashboard]]){
+  if(active)el(id).setAttribute('aria-current','page');else el(id).removeAttribute('aria-current');
+ }
+ if(dashboard)renderDashboard(el('dashboard-cards'),cards.getCards());
+ window.scrollTo({top:0,behavior:'instant'});
+}
+el('calculator-tab').onclick=()=>showView(false);
+el('dashboard-tab').onclick=()=>showView(true);
+el('manage-cards').onclick=()=>{showView(false);el('card-name').focus()};
 update();
 let registration, reloading=false;
 const activate=()=>{if(registration?.waiting){navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloading){reloading=true;location.reload()}},{once:true});registration.waiting.postMessage('SKIP_WAITING')}};

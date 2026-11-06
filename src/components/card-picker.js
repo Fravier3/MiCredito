@@ -48,5 +48,5 @@ export function cardPicker(onChange){
  };
  el('example-back').onclick=()=>{example=false;fill();persist();onChange()};
  fill();persist();
- return {example(){example=true;el('example-back').hidden=false;el('card-name').disabled=true;el('storage-status').textContent='Ejemplo de práctica. Tus tarjetas guardadas no se modifican.';}};
+ return {getCards(){return state.cards.map(c=>({...c}))},example(){example=true;el('example-back').hidden=false;el('card-name').disabled=true;el('storage-status').textContent='Ejemplo de práctica. Tus tarjetas guardadas no se modifican.';}};
 }
