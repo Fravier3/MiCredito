@@ -1,18 +1,16 @@
 import {appShell} from './features/app-shell.js';
 import './styles/app.css';
 import {cents,money,percent,calculate,dateKey,addDays,daysBetween,dateLabel,purchaseCycle,status} from './features/calculator.ts';
-import {load,save,clear} from './services/session.js';
+import {cardPicker} from './components/card-picker.js';
 document.querySelector('#app').innerHTML=appShell;
 const el=id=>document.getElementById(id);
 const text=(id,value)=>el(id).textContent=value;
 const today=()=>dateKey(new Date());
 const fields=['limit','balance','cutoff','due'];
 let target=30;
-const stored=load();
-for(const f of fields)if(typeof stored?.[f]==='string')el(f).value=stored[f];
-if([30,9,0].includes(Number(stored?.target)))target=Number(stored.target);
+const cards=cardPicker(update);
 function update(){
- const data=Object.fromEntries(fields.map(f=>[f,el(f).value]));save({...data,target});
+ const data=Object.fromEntries(fields.map(f=>[f,el(f).value]));
  for(const b of document.querySelectorAll('[data-target]'))b.setAttribute('aria-pressed',String(Number(b.dataset.target)===target));
  text('error','');
  const goalLabel=target===0?'Saldar todo':target===9?'Quedar por debajo de 10%':'Quedar en 30%';
@@ -52,11 +50,9 @@ function update(){
  const due=data.due;
  if(due&&el('due').validity.valid){const d=daysBetween(today(),due);text('due-title',d<0?`El vencimiento del ${dateLabel(due)} ya pasó`:d===0?'Tu fecha de pago es hoy':`Paga tu estado antes del ${dateLabel(due)}`);text('due-note',d<0?'Revisa hoy con tu banco si queda saldo vencido y actualiza la fecha.':`${d===0?'Confirma la hora límite de tu banco. ':''}Paga el saldo completo pendiente del estado de cuenta para evitar intereses en compras, si conservas el período de gracia. ${d>0?`Faltan ${d} días.`:''}`)}else{text('due-title','Añade el próximo vencimiento');text('due-note','Paga el saldo completo pendiente del estado de cuenta antes del vencimiento para evitar intereses en compras, si conservas el período de gracia.');}
 }
-for(const f of fields)el(f).addEventListener('input',update);
 for(const b of document.querySelectorAll('[data-target]'))b.onclick=()=>{target=Number(b.dataset.target);update()};
 el('form').onsubmit=e=>e.preventDefault();
-el('example').onclick=()=>{el('limit').value='6000';el('balance').value='2000';el('cutoff').value=addDays(today(),5);el('due').value=addDays(today(),2);target=30;update()};
-el('reset').onclick=()=>{for(const f of fields)el(f).value='';target=30;clear();update()};
+el('example').onclick=()=>{cards.example();el('limit').value='6000';el('balance').value='2000';el('cutoff').value=addDays(today(),5);el('due').value=addDays(today(),2);target=30;update()};
 update();
 let registration, reloading=false;
 const activate=()=>{if(registration?.waiting){navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloading){reloading=true;location.reload()}},{once:true});registration.waiting.postMessage('SKIP_WAITING')}};

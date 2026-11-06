@@ -13,11 +13,12 @@ Los importes se calculan en centavos enteros. La compra se clasifica por registr
 - `src/features/calculator.ts`: lógica pura, tipada y probada.
 - `src/features/app-shell.js`: estructura accesible.
 - `src/main.js`: interacción y presentación.
-- `src/services/session.js`: adaptador de sesión reemplazable por persistencia autenticada futura.
+- `src/services/cards.js`: perfiles locales por tarjeta, con saldos separados en sesión; migración desde la sesión anterior.
+- `src/components/card-picker.js`: selección, nombre, alta y borrado de tarjetas; ejemplo aislado.
 - `src/styles/app.css`: diseño adaptable y áreas seguras.
 - `scripts/offline.mjs`: precaché coherente y versionado a partir del build.
 
-GitHub Actions prueba y compila; Pages publica únicamente `dist/`. No se publican tests ni fuentes en el artefacto de Pages, aunque este repositorio público sí contiene las fuentes. No se transmiten entradas de la calculadora. Sin analítica. La sesión se conserva al recargar y se puede limpiar.
+GitHub Actions prueba y compila; Pages publica únicamente `dist/`. No se publican tests ni fuentes en el artefacto de Pages, aunque este repositorio público sí contiene las fuentes. No se transmiten entradas de la calculadora. Sin analítica. Nombre, límite y fechas se conservan localmente al cerrar y reabrir. El saldo se conserva solo en la pestaña, separado por tarjeta. El usuario puede borrar una tarjeta o todas con confirmación. Los ejemplos nunca sobrescriben las tarjetas. No hay sincronización entre dispositivos; borrar datos del navegador o salir del modo privado puede eliminar los perfiles. Las fechas exactas guardadas no se avanzan automáticamente; se avisa si ya pasaron.
 
 ## Límites
 
